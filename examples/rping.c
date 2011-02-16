@@ -280,11 +280,12 @@ static int rping_cq_event_handler(struct rping_cb *cb)
 		ret = 0;
 
 		if (wc.status) {
-			if (wc.status != IBV_WC_WR_FLUSH_ERR)
+			if (wc.status != IBV_WC_WR_FLUSH_ERR) {
 				fprintf(stderr,
 					"cq completion failed status %d\n",
 					wc.status);
-			ret = -1;
+				ret = -1;
+			}
 			goto error;
 		}
 
@@ -801,9 +802,10 @@ static void *rping_persistent_server_thread(void *arg)
 
 	rping_test_server(cb);
 	rdma_disconnect(cb->child_cm_id);
-	pthread_join(cb->cqthread, NULL);
 	rping_free_buffers(cb);
 	rping_free_qp(cb);
+	pthread_cancel(cb->cqthread);
+	pthread_join(cb->cqthread, NULL);
 	rdma_destroy_id(cb->child_cm_id);
 	free_cb(cb);
 	return NULL;
@@ -888,7 +890,6 @@ static int rping_run_server(struct rping_cb *cb)
 
 	rping_test_server(cb);
 	rdma_disconnect(cb->child_cm_id);
-	pthread_join(cb->cqthread, NULL);
 	rdma_destroy_id(cb->child_cm_id);
 err2:
 	rping_free_buffers(cb);
@@ -1056,7 +1057,6 @@ static int rping_run_client(struct rping_cb *cb)
 
 	rping_test_client(cb);
 	rdma_disconnect(cb->cm_id);
-	pthread_join(cb->cqthread, NULL);
 err2:
 	rping_free_buffers(cb);
 err1:
